@@ -3,6 +3,8 @@ import joblib
 from groq import Groq
 
 import os
+import sqlite3
+import datetime
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
@@ -132,6 +134,49 @@ def webhook():
             "text": response_message
         })
     return('ok', 200)
+
+@app.route("/insert_user", methods=["GET", "POST"])
+def insert_user():  
+    if request.method == "POST":
+        name = request.form.get("name")
+        if not name or name.strip() == "":
+            return render_template("insert_user.html", r="Name is required.")
+
+        t = datetime.datetime.now()
+        conn = sqlite3.connect('user.db') 
+        c = conn.cursor()
+        c.execute('INSERT INTO user (name, timestamp) VALUES (?, ?)', (name, t))
+        conn.commit()
+        c.close()
+        conn.close()
+
+        status = f"Inserted user: {name} at {t}"
+        return render_template("insert_user.html", r=status)
+
+    return render_template("insert_user.html", r="")
+
+@app.route("/user_log",methods=["GET","POST"])
+def user_log():
+    conn = sqlite3.connect('user.db')
+    c = conn.cursor()
+    c.execute('''select * from user''')
+    r=""
+    for row in c:
+        print(row)
+        r = r + str(row)
+    c.close()
+    conn.close()
+    return(render_template("user_log.html", r=r))
+    
+@app.route("/delete_log",methods=["GET","POST"])
+def delete_log():
+    conn = sqlite3.connect('user.db')
+    c = conn.cursor()
+    c.execute('DELETE FROM user',);
+    conn.commit()
+    c.close()
+    conn.close()
+    return(render_template("delete_log.html", r="user log deleted"))
 
 if __name__ == "__main__":
     app.run()
